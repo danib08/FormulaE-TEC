@@ -1,0 +1,1 @@
+Land Rover*Range Rover*Inglaterra*2019*1*4*3*Disponible*0.5*75*4*0.5#Dallara*Spark-Renault SRT 01E1*Italia*2019*2*2*5*Disponible*2.0*80*896*3.0#Dallara*Spark SRT05e1*Italia*2019*2*1*4*Disponible*1.0*60*900*2.0#Dallara*Spark-Renault SRT 01E2*Italia*2019*2*2*5*Disponible*2.0*50*896*3.0#Dallara*Spark SRT05e2*Italia*2019*2*1*4*Disponible*1.0*90*900*2.0
