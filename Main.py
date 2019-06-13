@@ -7,6 +7,9 @@ Imports:
 import tkinter as tk
 import tkinter.messagebox
 from Instancias import *
+from WifiClient import NodeMCU
+from threading import Thread
+from time import sleep
 
 # ****************** Variables ******************
 button_font = ("Verdana", 12) # Fuente para lables/botones
@@ -73,6 +76,21 @@ for a in lista_a:   # se itera sobre cada 'automovil' en la lista
     autos[j].set_eficiencia(float(tmp[11]))
     j += 1 # Se aumenta el contador
 
+# ****************** Variables Test Drive ******************
+pwm = 0  # Variable traccion
+direc = 0  # Variable direccion
+luz_der = 0  # Variable luz_derecha
+der_flag = False  # Variable flag para la luz derecha (maneja que sea intermitente)
+luz_izq = 0  # Variable luz izquierda
+izq_flag = False  # Variable flag para la luz izquierda (maneja que sea intermitente)
+luz_fro = 0  # Variable luz frontales
+luz_tra = 0  # Variable luz traseras
+ldr = 0  # Variable de luz
+bat = autos[0].nivel_bateria  # Variable nivel de bateria
+
+# ****************** Cliente NodeMCU ******************
+myCar = NodeMCU()
+myCar.start()
 
 # ****************** Funciones ******************
 """
@@ -146,6 +164,7 @@ S: se muestra el frame del test_drive y desaparecen los demas
 R: -
 """
 def ir_a_test_drive():
+
     menu.grid_forget()
     about.grid_forget()
     tabla_p.grid_forget()
@@ -725,6 +744,261 @@ def editar_a_aux(atrib, i, entry):
     else:
         autos[i].set_eficiencia(entry)
 
+"""
+Funcion forward
+E: pwm 
+S: incrementa pwm y luego envia este valor para mover el vehiculo hacia delante
+R: -
+"""
+def forward():
+    global pwm
+    if pwm <= 0:
+        pwm = 100
+    elif pwm <= 500:
+        pwm += 75
+    elif pwm <= 700:
+        pwm += 50
+    elif pwm <= 950:
+        pwm += 25
+    else:
+        pwm = 1000
+    v_pwm.set("PWM:{}".format(pwm))
+    myCar.send('pwm:{};'.format(pwm))
+
+"""
+Funcion backward
+E: pwm
+S: disminuye pwm y luego envia este valor para mover el vehiculo hacia atras
+R: -
+"""
+def backward():
+    global pwm
+    if pwm >= 0:
+        pwm = -100
+    elif pwm >= -500:
+        pwm -= 75
+    elif pwm >= -700:
+        pwm -= 50
+    elif pwm >= -950:
+        pwm -= 25
+    else:
+        pwm = -1000
+    v_pwm.set("PWM:{}".format(pwm))
+    lback()
+    myCar.send('pwm:{};'.format(pwm))
+
+"""
+Funcion stop
+E: pwm
+S: Actualiza pwm a 0 y envia este valor para detener el vehiculo
+R: -
+"""
+def stop():
+    global pwm
+    if pwm != 0:
+        pwm = 0
+    myCar.send('pwm:0;')
+    lback()
+    v_pwm.set("PWM:{}".format(pwm))
+
+
+"""
+Funcion right
+E: direc
+S: Actualiza direc a 1 y envia este valor para girar el vehiculo a la derecha
+R: -
+"""
+def right():
+    global direc
+    if direc != 1:
+        direc = 1
+    myCar.send('dir:1;')
+
+"""
+Funcion left
+E: direc
+S: Actualiza direc a -1 y envia este valor para girar el vehiculo a la izquierda
+R: -
+"""
+def left():
+    global direc
+    if direc != -1:
+        direc = -1
+    myCar.send('dir:-1;')
+
+"""
+Funcion straight
+E: direc
+S: Actualiza direc a 0 y envia este valor para no girar el vehiculo
+R: -
+"""
+def straight():
+    global direc
+    if direc != 0:
+        direc = 0
+    myCar.send('dir:0;')
+
+"""
+Funcion lback
+E: luz_tra, pwm
+S: Prende o apaga las luces traseras, si pwm es <= 0 siempre estan encendidas
+R: -
+"""
+def lback():
+    global luz_tra
+    global pwm
+    if luz_tra == 0 or pwm <= 0:
+        luz_tra = 1
+    else:
+        luz_tra = 0
+    myCar.send('lb:{};'.format(luz_tra))
+
+"""
+Funcion lfront
+E: luz_fro, ldr
+S: Prende o apaga las luces frontales, si ldr es igual a 0 siempre estan encendidas
+R: -
+"""
+def lfront():
+    global luz_fro
+    global ldr
+    if luz_fro == 0 or ldr == 0:
+        luz_fro = 1
+    else:
+        luz_fro = 0
+    myCar.send('lf:{};'.format(luz_fro))
+
+"""
+Funcion lright
+E: luz_der, der_flag 
+S: Prende (intermitente) o apaga la luz derecha
+R: -
+"""
+def lright():
+    global luz_der
+    global der_flag
+    while der_flag == True:
+        if luz_der == 0:
+            luz_der = 1
+        else:
+            luz_der = 0
+        myCar.send('lr:{};'.format(luz_der))
+        sleep(1)
+    luz_der = 0
+    myCar.send('lr:{};'.format(luz_der))
+    der_flag = False
+
+"""
+Funcion press_lright
+E: der_flag
+S: Crea un thread que maneja la luz derecha
+R: -
+"""
+def press_lr():
+    global der_flag
+    if der_flag == False:
+        der_flag = True
+        lrt = Thread(target=lright)
+        lrt.start()
+
+    else:
+        der_flag = False
+
+"""
+Funcion lleft
+E: luz_izq, izq_flag
+S: Prende (intermitente) o apaga la luz izquierda
+R: -
+"""
+def lleft():
+    global luz_izq
+    global izq_flag
+    while izq_flag == True:
+        if luz_izq == 0:
+            luz_izq = 1
+        else:
+            luz_izq = 0
+        myCar.send('ll:{};'.format(luz_izq))
+        sleep(1)
+    luz_izq = 0
+    myCar.send('ll:{};'.format(luz_izq))
+    izq_flag = False
+
+"""
+Funcion press_ll
+E: izq_flag
+S: Crea un thread que maneja la luz izquierda
+R: -
+"""
+def press_ll():
+    global izq_flag
+    if izq_flag == False:
+        izq_flag = True
+        llt = Thread(target=lleft)
+        llt.start()
+    else:
+        izq_flag = False
+
+"""
+Funcion light
+E: ldr
+S: Manejo manual de light, ya que siempre se mantiene en 1 desde Arduino.
+R: -
+"""
+def light():
+    global ldr
+    if ldr != 0:
+        ldr = 0
+        ldr_image.configure(image=ldr_moon)
+        ldr_image.image = ldr_moon
+    else:
+        ldr = 1
+        ldr_image.configure(image=ldr_sun)
+        ldr_image.image = ldr_sun
+
+
+"""
+Funcion battery
+E: Envia un comando para recibir el nivel de bateria actual.
+S: Nivel de bateria nuevo
+R: -
+"""
+def battery():
+    myCar.send("sense;")
+    bat = myCar.read()
+    autos[0].set_nivel_bateria(bat)
+    if bat <= 30:
+        autos[0].set_estado("Descargado")
+
+"""
+Funcion celebration
+E: pwm
+S: Movimiento de celebracion del piloto.
+"""
+def celebration():
+    global pwm
+    pwm = 650
+    right()
+    forward()
+    sleep(2)
+    stop()
+    sleep(0.1)
+    pwm = -650
+    left()
+    backward()
+    sleep(3)
+    stop()
+    straight()
+
+"""
+Funcion special
+E: pwm, dir
+S: Movimiento especial del carro.
+R: -
+"""
+def special():
+    myCar.send("spe:1;")
+
 
 # ****************** Frames ******************
 root = tk.Tk() # Ventana principial
@@ -835,6 +1109,7 @@ button_tabla_p_2.grid(row=0, column=0)
 button_tabla_p_3.grid(row=0, column=1)
 button_tabla_p_4.grid(row=0, column=2)
 button_tabla_p_5.grid(row=0, column=3)
+
 # Labels de la tabla_p
 label_tabla_p_1 = tk.Label(tabla_p, text="Pos", font=small_font, bg="deepskyblue3")
 label_tabla_p_2 = tk.Label(tabla_p, text="Nombre", font=small_font, bg="deepskyblue3")
@@ -844,6 +1119,7 @@ label_tabla_p_5 = tk.Label(tabla_p, text="Temp", font=small_font, bg="deepskyblu
 label_tabla_p_6 = tk.Label(tabla_p, text="Comp", font=small_font, bg="deepskyblue3")
 label_tabla_p_7 = tk.Label(tabla_p, text="RGP", font=small_font, bg="deepskyblue3")
 label_tabla_p_8 = tk.Label(tabla_p, text="REP", font=small_font, bg="deepskyblue3")
+
 #Se colocan las labels
 label_tabla_p_1.place(x=0, y=40)
 label_tabla_p_2.place(x=35, y=40)
@@ -897,13 +1173,67 @@ canvas_grid_a.place(x=0, y=0)
 # ----- TEST DRIVE -----
 test_drive = tk.Frame(root, width=1000, height=600, bg="hotpink") # frame del test drive
 
+canvas_test_drive = tk.Canvas(test_drive, width=1000, height=600)
+canvas_test_drive.place(x=0, y=0)
+
+bg_test = tk.PhotoImage(file="Images/bg_test.png")
+canvas_test_drive.create_image(500, 300, image = bg_test)
+
+ldr_sun = tk.PhotoImage(file="Images/ldr_sun.png")
+ldr_moon = tk.PhotoImage(file="Images/ldr_moon.png")
+
+#Variable text test drive, se usa para tener texto cambiante en Tkinter
+v_pwm = tk.StringVar()
+v_pwm.set("PWM:{}".format(pwm))
+
+# Labels del test drive
+label_test_1 = tk.Label(test_drive, textvariable=v_pwm, font=small_font, bg="PaleGreen1")
+label_test_2 = tk.Label(test_drive, text=pilotos[0].nombre, font=small_font, bg="SteelBlue1")
+label_test_3 = tk.Label(test_drive, text=pilotos[0].nacionalidad, font=small_font, bg="SteelBlue1")
+label_test_4 = tk.Label(test_drive, text="Bateria:{}%".format(bat), font=small_font, bg="Green")
+ldr_image = tk.Label(canvas_test_drive, image=ldr_sun)
+
+# Se colocan las labels
+label_test_1.place(x=470, y=400)
+label_test_2.place(x=470, y=50)
+label_test_3.place(x=470, y=100)
+label_test_4.place(x=600, y=50)
+ldr_image.place(x=50, y=50)
+
+
 # Botones del test drive
 button_test_1 = tk.Button(test_drive, text="Regresar al menú", font=button_font, command=ir_a_menu)
+button_test_2 = tk.Button(test_drive, text="Adelante", font=button_font, command=forward, bg="PaleGreen1")
+button_test_3 = tk.Button(test_drive, text="Atras", font=button_font, command=backward, bg="PaleGreen1")
+button_test_4 = tk.Button(test_drive, text="Detenerse", font=button_font, command=stop, bg="PaleGreen1")
+button_test_5 = tk.Button(test_drive, text="Derecha", font=button_font, command=right, bg="DarkOliveGreen1")
+button_test_6 = tk.Button(test_drive, text="Izquierda", font=button_font, command=left, bg="DarkOliveGreen1")
+button_test_7 = tk.Button(test_drive, text="Recto", font=button_font, command=straight, bg="DarkOliveGreen1")
+button_test_8 = tk.Button(test_drive, text="Luz Frontal", font=button_font, command=lfront, bg="Snow")
+button_test_9 = tk.Button(test_drive, text="Luz Trasera", font=button_font, command=lback, bg="Red")
+button_test_10 = tk.Button(test_drive, text="Luz Derecha", font=button_font, command=lright, bg="Yellow")
+button_test_11 = tk.Button(test_drive, text="Luz Izquierda", font=button_font, command=lleft, bg="Yellow")
+button_test_12 = tk.Button(test_drive, text="Dia/Noche", font=button_font, command=light, bg="DeepSkyBlue")
+button_test_13 = tk.Button(test_drive, text="Celebracion", font=button_font, command=celebration, bg="Khaki")
+button_test_14 = tk.Button(test_drive, text="Movimiento Especial", font=button_font, command=special, bg="Khaki")
 
 # Se colocan los botones
 button_test_1.place(x=800, y=10)
+button_test_2.place(x=350, y=430)
+button_test_3.place(x=470, y=430)
+button_test_4.place(x=550, y=430)
+button_test_5.place(x=350, y=530)
+button_test_6.place(x=450, y=530)
+button_test_7.place(x=575, y=530)
+button_test_8.place(x=50, y=430)
+button_test_9.place(x=50, y=530)
+button_test_10.place(x=800, y=430)
+button_test_11.place(x=800, y=530)
+button_test_12.place(x=150, y=50)
+button_test_13.place(x=780, y=200)
+button_test_14.place(x=750, y=250)
 
-
+# Se empieza la ventana de tkinter
 root.mainloop()
 
 
