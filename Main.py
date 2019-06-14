@@ -977,13 +977,13 @@ S: Movimiento de celebracion del piloto.
 """
 def celebration():
     global pwm
-    pwm = 650
+    pwm = 1000
     right()
     forward()
     sleep(2)
     stop()
     sleep(0.1)
-    pwm = -650
+    pwm = -1000
     left()
     backward()
     sleep(3)
@@ -997,7 +997,7 @@ S: Movimiento especial del carro.
 R: -
 """
 def special():
-    myCar.send("spe:1;")
+    myCar.send("circle:1;")
 
 
 # ****************** Frames ******************
@@ -1211,8 +1211,8 @@ button_test_6 = tk.Button(test_drive, text="Izquierda", font=button_font, comman
 button_test_7 = tk.Button(test_drive, text="Recto", font=button_font, command=straight, bg="DarkOliveGreen1")
 button_test_8 = tk.Button(test_drive, text="Luz Frontal", font=button_font, command=lfront, bg="Snow")
 button_test_9 = tk.Button(test_drive, text="Luz Trasera", font=button_font, command=lback, bg="Red")
-button_test_10 = tk.Button(test_drive, text="Luz Derecha", font=button_font, command=lright, bg="Yellow")
-button_test_11 = tk.Button(test_drive, text="Luz Izquierda", font=button_font, command=lleft, bg="Yellow")
+button_test_10 = tk.Button(test_drive, text="Luz Derecha", font=button_font, command=press_lr, bg="Yellow")
+button_test_11 = tk.Button(test_drive, text="Luz Izquierda", font=button_font, command=press_ll, bg="Yellow")
 button_test_12 = tk.Button(test_drive, text="Dia/Noche", font=button_font, command=light, bg="DeepSkyBlue")
 button_test_13 = tk.Button(test_drive, text="Celebracion", font=button_font, command=celebration, bg="Khaki")
 button_test_14 = tk.Button(test_drive, text="Movimiento Especial", font=button_font, command=special, bg="Khaki")
